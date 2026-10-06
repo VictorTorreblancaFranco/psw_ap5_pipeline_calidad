@@ -1,0 +1,47 @@
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: infra/jenkins/Dockerfile
+    container_name: psw-ap5-jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    networks:
+      - quality
+    depends_on:
+      sonarqube:
+        condition: service_healthy
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: psw-ap5-sonarqube
+    restart: unless-stopped
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    networks:
+      - quality
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+
+networks:
+  quality:
+
+volumes:
+  jenkins_home:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
